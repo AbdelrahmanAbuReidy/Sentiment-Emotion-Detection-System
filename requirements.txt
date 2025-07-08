@@ -5,4 +5,7 @@ joblib
 spacy
 numpy
 requests
-scikit-learn 
+scikit-learn
+Flask-SQLAlchemy
+psycopg2-binary
+Flask-Migrate 

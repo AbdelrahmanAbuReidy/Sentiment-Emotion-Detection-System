@@ -7,10 +7,18 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 import uuid
 import requests
 import os
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'  # Change this in production
 socketio = SocketIO(app, cors_allowed_origins="*")
+
+# Database configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://postgres:password@localhost:5432/postgres')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
 # Load SpaCy English model
 nlp = spacy.load("en_core_web_sm", disable=["parser", "ner"])
@@ -219,6 +227,35 @@ def handle_disconnect():
     if username:
         emit('user_left', {'username': username, 'session_id': session_id}, broadcast=True)
         print(f"{username} left the chat. Session: {session_id}")
+
+# --- Database Models ---
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+    messages = db.relationship('Message', backref='user', lazy=True)
+    sessions = db.relationship('ChatSession', secondary='user_session', back_populates='participants')
+
+class ChatSession(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    start_time = db.Column(db.DateTime, nullable=False)
+    end_time = db.Column(db.DateTime)
+    messages = db.relationship('Message', backref='session', lazy=True)
+    participants = db.relationship('User', secondary='user_session', back_populates='sessions')
+
+class Message(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    session_id = db.Column(db.Integer, db.ForeignKey('chat_session.id'), nullable=False)
+
+# Association table for many-to-many relationship between users and sessions
+user_session = db.Table('user_session',
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
+    db.Column('session_id', db.Integer, db.ForeignKey('chat_session.id'), primary_key=True)
+)
 
 if __name__ == '__main__':
     print("🚀 Starting Flask-SocketIO server...")
