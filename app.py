@@ -9,6 +9,8 @@ import requests
 import os
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'  # Change this in production
@@ -95,7 +97,17 @@ def get_gpt_description(message, emotion, sentiment):
     except Exception as e:
         return f"[GPT error: {e}]"
 
+LOGIN_TEMPLATE = 'login.html'
+REGISTER_TEMPLATE = 'register.html'
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return render_template(LOGIN_TEMPLATE, message='You have been logged out.')
+
 @app.route('/')
+@login_required
 def home():
     """Render the main page"""
     return render_template('index.html')
@@ -161,6 +173,46 @@ def health_check():
         'emotion_model': 'emotion_nb_model_balanced.joblib',
         'sentiment_model': 'sentiment_nb_model.joblib'
     })
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        data = request.form
+        username = data.get('username')
+        email = data.get('email')
+        password = data.get('password')
+        confirm_password = data.get('confirm_password')
+        # Basic validation
+        if not username or not email or not password or not confirm_password:
+            return render_template(REGISTER_TEMPLATE, error='All fields are required.')
+        if password != confirm_password:
+            return render_template(REGISTER_TEMPLATE, error='Passwords do not match.')
+        if User.query.filter_by(username=username).first() or User.query.filter_by(email=email).first():
+            return render_template(REGISTER_TEMPLATE, error='Username or email already exists.')
+        # Hash the password
+        password_hash = generate_password_hash(password)
+        # Create and add user
+        user = User(username=username, email=email, password_hash=password_hash)
+        db.session.add(user)
+        db.session.commit()
+        return render_template(LOGIN_TEMPLATE, message='Registration successful! Please log in.')
+    return render_template(REGISTER_TEMPLATE)
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        data = request.form
+        identifier = data.get('identifier')  # username or email
+        password = data.get('password')
+        if not identifier or not password:
+            return render_template(LOGIN_TEMPLATE, error='Username/email and password are required.')
+        # Try to find user by username or email
+        user = User.query.filter((User.username == identifier) | (User.email == identifier)).first()
+        if not user or not check_password_hash(user.password_hash, password):
+            return render_template(LOGIN_TEMPLATE, error='Invalid credentials.')
+        login_user(user)
+        return render_template('index.html', message='Login successful!')
+    return render_template(LOGIN_TEMPLATE)
 
 # --- SocketIO Real-Time Chat Logic ---
 users = {}  # session_id -> username
@@ -229,13 +281,20 @@ def handle_disconnect():
         print(f"{username} left the chat. Session: {session_id}")
 
 # --- Database Models ---
-class User(db.Model):
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
+
+class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
     messages = db.relationship('Message', backref='user', lazy=True)
     sessions = db.relationship('ChatSession', secondary='user_session', back_populates='participants')
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
 
 class ChatSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)

@@ -316,9 +316,19 @@
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>🤖 AI Emotion & Sentiment Analyzer</h1>
-            <p>Chat in real time! Each user picks a username.</p>
+        <div class="header" style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h1>🤖 AI Emotion & Sentiment Analyzer</h1>
+                <p>Chat in real time! Each user picks a username.</p>
+            </div>
+            <div style="text-align: right;">
+                {% if current_user.is_authenticated %}
+                    <div style="font-size: 1.1em; color: #fff; margin-bottom: 6px;">
+                        👤 {{ current_user.username }}
+                    </div>
+                    <a href="/logout" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 8px 18px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 1em; transition: background 0.2s;">Logout</a>
+                {% endif %}
+            </div>
         </div>
 
         <!-- Analysis Toggle -->

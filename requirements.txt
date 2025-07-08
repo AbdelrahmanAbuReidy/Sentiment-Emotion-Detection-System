@@ -8,4 +8,5 @@ requests
 scikit-learn
 Flask-SQLAlchemy
 psycopg2-binary
-Flask-Migrate 
+Flask-Migrate
+Flask-Login 
