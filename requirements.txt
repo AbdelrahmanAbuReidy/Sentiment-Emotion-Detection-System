@@ -1,0 +1,7 @@
+Flask
+Flask-SocketIO
+eventlet
+joblib
+spacy
+numpy
+requests 
