@@ -82,4 +82,4 @@ The repo is deploy-ready for Render: `Procfile` starts the Socket.IO server, `re
 
 ## Author
 
-**Abdelrahman Zakaria Abu Reidy** — [github.com/AbdelrahmanAbuReidy](https://github.com/AbdelrahmanAbuReidy)
+**Abdelrahman Abu Reidy** — [github.com/AbdelrahmanAbuReidy](https://github.com/AbdelrahmanAbuReidy)
