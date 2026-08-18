@@ -13,7 +13,7 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your_secret_key_here'  # Change this in production
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-only-secret-change-in-production')
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Database configuration
